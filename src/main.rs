@@ -6,8 +6,8 @@ use std::io;
 use tui::backend::CrosstermBackend;
 use tui::Terminal;
 
-fn main() -> AppResult<()> {
-    // Create an application.
+#[tokio::main]
+async fn main() -> AppResult<()> {
     let mut app = App::new();
 
     // Initialize the terminal user interface.
@@ -24,7 +24,7 @@ fn main() -> AppResult<()> {
         // Handle events.
         match tui.events.next()? {
             Event::Tick => app.tick(),
-            Event::Key(key_event) => handle_key_events(key_event, &mut app)?,
+            Event::Key(key_event) => handle_key_events(key_event, &mut app, &mut tui).await?,
             Event::Mouse(_) => {}
             Event::Resize(_, _) => {}
         }

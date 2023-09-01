@@ -46,6 +46,16 @@ impl<B: Backend> Tui<B> {
         Ok(())
     }
 
+    pub fn show_cursor(&mut self) -> AppResult<()> {
+        self.terminal.show_cursor()?;
+        Ok(())
+    }
+
+    pub fn hide_cursor(&mut self) -> AppResult<()> {
+        self.terminal.hide_cursor()?;
+        Ok(())
+    }
+
     /// [`Draw`] the terminal interface by [`rendering`] the widgets.
     ///
     /// [`Draw`]: tui::Terminal::draw
