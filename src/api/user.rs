@@ -4,6 +4,7 @@ use serde::Deserialize;
 
 use crate::app::App;
 use crate::helper::StatefulList;
+use crate::API_URL;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct User {
@@ -21,7 +22,7 @@ pub async fn sign_in(app: &mut App, credentials: Credentials) -> Option<User> {
     if credentials.email.is_empty() || credentials.password.is_empty() {
         None
     } else if credentials.email == "cookie" && credentials.password == "cookie" {
-        let url = format!("{}/login/cookie/cookie", app.api_url,);
+        let url = format!("{}/login/cookie/cookie", API_URL);
 
         let response = app
             .reqwest_client
@@ -35,7 +36,7 @@ pub async fn sign_in(app: &mut App, credentials: Credentials) -> Option<User> {
 
         let user: User = serde_json::from_str(&response).unwrap();
 
-        app.tasks = StatefulList::with_items(crate::api::task::get_all_tasks(app).await.unwrap());
+        app.task_data = crate::api::task::get_all_tasks(app).await.unwrap();
         app.tasks.next();
         app.boards =
             StatefulList::with_items(crate::api::board::get_all_user_boards(app).await.unwrap());
@@ -46,19 +47,18 @@ pub async fn sign_in(app: &mut App, credentials: Credentials) -> Option<User> {
         let client = &app.reqwest_client;
         let url = format!(
             "{}/login/{}/{}",
-            app.api_url, credentials.email, credentials.password
+            API_URL, credentials.email, credentials.password
         );
         let response = client.get(&url).send().await.unwrap().text().await.unwrap();
 
         if response == "\"Logged in\"" {
-            let url = format!("{}/login/cookie/cookie", app.api_url,);
+            let url = format!("{}/login/cookie/cookie", API_URL);
 
             let response = client.get(&url).send().await.unwrap().text().await.unwrap();
 
             let user: User = serde_json::from_str(&response).unwrap();
 
-            app.tasks =
-                StatefulList::with_items(crate::api::task::get_all_tasks(app).await.unwrap());
+            app.task_data = crate::api::task::get_all_tasks(app).await.unwrap();
             app.tasks.next();
             app.boards = StatefulList::with_items(
                 crate::api::board::get_all_user_boards(app).await.unwrap(),

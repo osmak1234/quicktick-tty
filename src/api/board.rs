@@ -1,8 +1,8 @@
 use serde::{Deserialize, Serialize};
 
-use crate::app::App;
+use crate::{app::App, API_URL};
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Board {
     pub uuid: String,
     pub name: String,
@@ -12,7 +12,7 @@ pub struct Board {
 
 pub async fn get_all_user_boards(app: &mut App) -> Option<Vec<Board>> {
     let client = &app.reqwest_client;
-    let url = format!("{}/get/all_user_board", app.api_url);
+    let url = format!("{}/get/all_user_board", API_URL);
     //TODO: Error handling
     let response = client.get(&url).send().await.unwrap().text().await.unwrap();
     let boards: Vec<Board> = serde_json::from_str(&response).unwrap();

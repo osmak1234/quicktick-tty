@@ -13,12 +13,12 @@ pub type AppResult<T> = std::result::Result<T, Box<dyn error::Error>>;
 #[derive(Debug)]
 pub struct App {
     pub reqwest_client: reqwest::Client,
-    pub api_url: String,
     pub running: bool,
     pub user: Option<User>,
     pub credentials: Option<Credentials>,
     pub boards: StatefulList<Board>,
     pub tasks: StatefulList<Task>,
+    pub task_data: Vec<Task>,
     pub selected_widget: bool,
     pub input: InputState,
 }
@@ -32,7 +32,6 @@ impl Default for App {
                 .timeout(std::time::Duration::from_secs(5))
                 .build()
                 .unwrap(),
-            api_url: String::from("https://quicktick-api.fly.dev"),
 
             running: true,
             user: None,
@@ -40,6 +39,7 @@ impl Default for App {
                 email: "tadeashanus31@gmail.com".to_string(),
                 password: "123456".to_string(),
             }),
+            task_data: Vec::new(),
             tasks: StatefulList::with_items(Vec::new()),
             boards: StatefulList::with_items(Vec::new()),
             selected_widget: false,

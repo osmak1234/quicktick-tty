@@ -6,7 +6,7 @@ use tui::{
     Frame,
 };
 
-use crate::app::App;
+use crate::{app::App, helper::StatefulList};
 
 /// Renders the user interface widgets.
 pub fn render<B: Backend>(app: &mut App, frame: &mut Frame<'_, B>) {
@@ -29,19 +29,35 @@ pub fn render<B: Backend>(app: &mut App, frame: &mut Frame<'_, B>) {
     // Adjust the style as needed
 
     // TASKS
+    let tasks_to_display = app
+        .task_data
+        .iter()
+        .filter(|task| {
+            app.boards
+                .selected()
+                .is_some_and(|board| board.special.is_some_and(|special| special == 1))
+                || app
+                    .boards
+                    .selected()
+                    .is_some_and(|board| board.uuid == task.board_uuid)
+        })
+        .cloned()
+        .collect::<Vec<_>>();
 
-    let items: Vec<_> = app
+    app.tasks = StatefulList::with_items(tasks_to_display);
+
+    let items = app
         .tasks
         .items
         .iter()
         .map(|task| {
-            ListItem::new(format!(
-                "{} {}",
-                if task.completed { "" } else { "" },
-                task.name.clone(),
-            ))
+            let mut task_name = task.name.clone();
+            if task.completed {
+                task_name = format!("{} (completed)", task_name);
+            }
+            ListItem::new(task_name)
         })
-        .collect();
+        .collect::<Vec<_>>();
 
     let task_widget = List::new(items)
         .block(

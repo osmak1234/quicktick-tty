@@ -18,3 +18,5 @@ pub mod api;
 
 /// Helper functions
 pub mod helper;
+
+pub const API_URL: &str = "https://quicktick-api.fly.dev";

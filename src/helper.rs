@@ -28,7 +28,7 @@ pub struct InputState {
     pub input_mode: InputMode,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct StatefulList<T> {
     pub state: ListState,
     pub items: Vec<T>,
@@ -40,6 +40,13 @@ impl<T> StatefulList<T> {
             state: ListState::default(),
             items,
         }
+    }
+
+    pub fn selected(&self) -> Option<T>
+    where
+        T: Clone,
+    {
+        self.state.selected().map(|i| self.items[i].clone())
     }
 
     pub fn next(&mut self) {
