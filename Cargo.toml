@@ -1,0 +1,16 @@
+[package]
+name = "quicktick-tty"
+version = "0.1.0"
+authors = ["osmak1234 <tadeashanus0631@gmail.com>"]
+license = "MIT"
+edition = "2021"
+
+[dependencies]
+crossterm = "0.27.0"
+reqwest = { version = "0.11.20", features = [
+  "cookie_crate",
+  "cookie_store",
+  "cookies",
+  "tokio-socks",
+] }
+tui = { package = "ratatui", version = "0.23.0" }
