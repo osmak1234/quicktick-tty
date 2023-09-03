@@ -6,7 +6,7 @@ use tui::{
     Frame,
 };
 
-use crate::{app::App, helper::StatefulList};
+use crate::app::App;
 
 /// Renders the user interface widgets.
 pub fn render<B: Backend>(app: &mut App, frame: &mut Frame<'_, B>) {
@@ -44,8 +44,7 @@ pub fn render<B: Backend>(app: &mut App, frame: &mut Frame<'_, B>) {
         .cloned()
         .collect::<Vec<_>>();
 
-    app.tasks = StatefulList::with_items(tasks_to_display);
-
+    app.tasks.items = tasks_to_display;
     let items = app
         .tasks
         .items
@@ -53,7 +52,9 @@ pub fn render<B: Backend>(app: &mut App, frame: &mut Frame<'_, B>) {
         .map(|task| {
             let mut task_name = task.name.clone();
             if task.completed {
-                task_name = format!("{} (completed)", task_name);
+                task_name = format!(" {}", task_name);
+            } else {
+                task_name = format!(" {}", task_name);
             }
             ListItem::new(task_name)
         })
@@ -72,7 +73,7 @@ pub fn render<B: Backend>(app: &mut App, frame: &mut Frame<'_, B>) {
         )
         .style(Style::default().fg(Color::White))
         .highlight_style(Style::default().add_modifier(Modifier::ITALIC))
-        .highlight_symbol(">>");
+        .highlight_symbol(" ");
 
     // BOARDS
 
@@ -96,7 +97,7 @@ pub fn render<B: Backend>(app: &mut App, frame: &mut Frame<'_, B>) {
         )
         .style(Style::default().fg(Color::White))
         .highlight_style(Style::default().add_modifier(Modifier::ITALIC))
-        .highlight_symbol(">>");
+        .highlight_symbol(" ");
 
     // Create your layout with the navbar and horizontal split for "Tasks" and "Boards"
     let layout = Layout::default()
@@ -130,40 +131,54 @@ pub fn render<B: Backend>(app: &mut App, frame: &mut Frame<'_, B>) {
     let screen_size = frame.size();
 
     // place the input in the middle of the screen using layout_input variable name,
+
+    let input_content = app.input_content.clone();
+
+    let input_fields = input_content.ui_to_render();
+
+    // based on input_fields.len() render the input input_fields
+
     let layout_input = Layout::default()
         .direction(Direction::Vertical)
-        .constraints([Constraint::Percentage(100)].as_ref())
-        .split(
-            if app.input.visible && screen_size.width > 60 && screen_size.height > 6 {
-                Rect::new(
-                    screen_size.width / 2 - 30,
-                    screen_size.height / 2 - 3,
-                    60,
-                    5,
-                )
-            } else {
-                Rect::new(0, 0, 0, 0)
-            },
-        );
-
-    let input = Paragraph::new(format!("\n{}", app.input.value))
-        .block(
-            Block::default()
-                .title("New task")
-                .borders(Borders::ALL)
-                .border_type(BorderType::Rounded),
+        .constraints(
+            input_fields
+                .iter()
+                .map(|_| Constraint::Length(3))
+                .collect::<Vec<_>>()
+                .as_ref(),
         )
-        .style(Style::default().bg(Color::Indexed(235)).fg(Color::White));
+        .split(Rect::new(
+            screen_size.width / 2 - 20,
+            screen_size.height / 2 - 5,
+            50,
+            match input_fields.len() {
+                0 => 0,
+                1 => 3,
+                2 => 6,
+                _ => 9,
+            },
+        ));
 
-    if app.input.visible {
-        frame.render_widget(input, layout_input[0]);
+    //  let input = Paragraph::new(format!("\n{}", app.input.value))
+    //      .block(
+    //          Block::default()
+    //              .title("New task")
+    //              .borders(Borders::ALL)
+    //              .border_type(BorderType::Rounded),
+    //      )
+    //      .style(Style::default().bg(Color::Indexed(235)).fg(Color::White));
+
+    if app.input_content.visible {
+        for (index, input) in input_fields.iter().enumerate() {
+            frame.render_widget(input.clone(), layout_input[index]);
+        }
     }
 
-    match app.input.visible {
+    match app.input_content.visible {
         true => {
             frame.set_cursor(
-                layout_input[0].x + app.input.value.to_string().len() as u16 + 1,
-                layout_input[0].y + 2,
+                layout_input[0].x + app.input_content.selected_input_len() as u16 + 1,
+                layout_input[app.input_content.selected_input].y + 1,
             );
         }
         false => {}

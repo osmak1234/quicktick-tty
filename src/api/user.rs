@@ -3,7 +3,8 @@ use serde::Serialize;
 use serde::Deserialize;
 
 use crate::app::App;
-use crate::helper::StatefulList;
+use crate::helper::input::InputContentVariants;
+use crate::helper::stateful_list::StatefulList;
 use crate::API_URL;
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -76,4 +77,49 @@ pub async fn sign_in(app: &mut App, credentials: Credentials) -> Option<User> {
 pub struct Credentials {
     pub email: String,
     pub password: String,
+}
+
+pub async fn sign_up(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
+    let (email, password, name) = match &app.input_content.variant {
+        InputContentVariants::SignUp {
+            email,
+            password,
+            name,
+        } => (email, password, name),
+        _ => {
+            return Err("Invalid input content variant".into());
+        }
+    };
+
+    let client = &app.reqwest_client;
+    let url = format!("{}/post/create_user", API_URL);
+    let body = format!(
+        "{{\"email\":\"{}\",\"password\":\"{}\",\"name\":\"{}\"}}",
+        email, password, name
+    );
+    let response = client
+        .post(&url)
+        .header("Content-Type", "application/json")
+        .body(body)
+        .send()
+        .await
+        .unwrap()
+        .text()
+        .await
+        .unwrap();
+
+    app.credentials = Some(Credentials {
+        email: "cookie".to_string(),
+        password: "cookie".to_string(),
+    });
+
+    let user_acc = sign_in(app, app.credentials.clone().unwrap()).await;
+
+    if user_acc.is_none() {
+        return Err("Failed to sign in".into());
+    } else {
+        app.user = user_acc;
+    }
+
+    Ok(())
 }
