@@ -5,6 +5,17 @@ use tui::{
 };
 use tui_input::{backend::crossterm::EventHandler, Input};
 
+pub const WINDOWN_WIDTH: usize = 47;
+pub const SMALL_INPUT: usize = 1;
+pub const BIG_INPUT: usize = 4;
+
+pub const BACKSPACE_KEY_EVENT: Event = Event::Key(KeyEvent {
+    code: crossterm::event::KeyCode::Backspace,
+    modifiers: crossterm::event::KeyModifiers::NONE,
+    state: crossterm::event::KeyEventState::NONE,
+    kind: crossterm::event::KeyEventKind::Press,
+});
+
 #[derive(Debug, Clone)]
 pub struct InputContent {
     pub visible: bool,
@@ -90,6 +101,18 @@ impl PartialEq for InputContentVariants {
     }
 }
 
+fn line_break_text(text: String) -> String {
+    let mut name_to_render = String::new();
+
+    for (index, char) in text.chars().enumerate() {
+        if index % WINDOWN_WIDTH == 0 && index != 0 {
+            name_to_render.push('\n');
+        }
+        name_to_render.push(char);
+    }
+    name_to_render
+}
+
 impl InputContent {
     pub fn show(&mut self, want_to_show: InputContentVariants) {
         if PartialEq::eq(&self.variant, &want_to_show) {
@@ -100,10 +123,68 @@ impl InputContent {
         }
     }
 
-    pub fn ui_to_render(&self) -> Vec<Paragraph> {
+    pub fn cursor_coordinates(&mut self) -> (u16, u16) // (x, y) x = len of current input, and y is based on selected_input and variant
+    {
+        let y: u16;
+        match self.variant {
+            InputContentVariants::CreateTask { .. } => match self.selected_input {
+                0 => {
+                    y = 1;
+                }
+                1 => {
+                    if self.selected_input_len() <= WINDOWN_WIDTH {
+                        y = 1;
+                    } else if self.selected_input_len() >= WINDOWN_WIDTH
+                        && self.selected_input_len() <= 2 * WINDOWN_WIDTH
+                    {
+                        y = 2;
+                    } else if self.selected_input_len() >= 2 * WINDOWN_WIDTH
+                        && self.selected_input_len() <= 3 * WINDOWN_WIDTH
+                    {
+                        y = 3;
+                    } else {
+                        y = 4;
+                    }
+                }
+                _ => {
+                    y = 1;
+                }
+            },
+            InputContentVariants::UpdateTask { .. } => match self.selected_input {
+                0 => {
+                    y = 1;
+                }
+                1 => {
+                    if self.selected_input_len() <= WINDOWN_WIDTH {
+                        y = 1;
+                    } else if self.selected_input_len() >= WINDOWN_WIDTH
+                        && self.selected_input_len() <= 2 * WINDOWN_WIDTH
+                    {
+                        y = 2;
+                    } else if self.selected_input_len() >= 2 * WINDOWN_WIDTH
+                        && self.selected_input_len() <= 3 * WINDOWN_WIDTH
+                    {
+                        y = 3;
+                    } else {
+                        y = 4;
+                    }
+                }
+                _ => {
+                    y = 1;
+                }
+            },
+            _ => {
+                y = 1;
+            }
+        }
+        ((self.selected_input_len() + 1).try_into().unwrap(), y)
+    }
+
+    pub fn ui_to_render(&mut self) -> Vec<Paragraph> {
         let mut to_render = Vec::new();
         match &self.variant {
             InputContentVariants::CreateTask { name, description } => {
+                // add \n after every 48 chars
                 to_render.push(
                     Paragraph::new(name.to_string().clone())
                         .block(
@@ -118,8 +199,9 @@ impl InputContent {
                         )
                         .style(Style::default().bg(Color::Indexed(235)).fg(Color::White)),
                 );
+
                 to_render.push(
-                    Paragraph::new(description.to_string().clone())
+                    Paragraph::new(line_break_text(description.to_string().clone()))
                         .block(
                             Block::default()
                                 .title("Description (optinal)")
@@ -165,7 +247,7 @@ impl InputContent {
                         .style(Style::default().bg(Color::Indexed(235)).fg(Color::White)),
                 );
                 to_render.push(
-                    Paragraph::new(description.to_string().clone())
+                    Paragraph::new(line_break_text(description.to_string().clone()))
                         .block(
                             Block::default()
                                 .title("Update task Description")
@@ -346,18 +428,28 @@ impl InputContent {
                 ref mut description,
             } => match self.selected_input {
                 0 => {
-                    if name.to_string().len() < 48 {
+                    if name.to_string().len() < WINDOWN_WIDTH * SMALL_INPUT
+                        || key_event == BACKSPACE_KEY_EVENT
+                    {
                         name.handle_event(&key_event);
                     }
                 }
                 1 => {
-                    description.handle_event(&key_event);
+                    if description.to_string().len() < WINDOWN_WIDTH * BIG_INPUT
+                        || key_event == BACKSPACE_KEY_EVENT
+                    {
+                        description.handle_event(&key_event);
+                    }
                 }
                 _ => {}
             },
             InputContentVariants::CreateBoard { ref mut name } => {
                 if let 0 = self.selected_input {
-                    name.handle_event(&key_event);
+                    if name.to_string().len() < WINDOWN_WIDTH * SMALL_INPUT
+                        || key_event == BACKSPACE_KEY_EVENT
+                    {
+                        name.handle_event(&key_event);
+                    }
                 }
             }
             InputContentVariants::UpdateTask {
@@ -365,10 +457,18 @@ impl InputContent {
                 ref mut description,
             } => match self.selected_input {
                 0 => {
-                    name.handle_event(&key_event);
+                    if name.to_string().len() < WINDOWN_WIDTH * SMALL_INPUT
+                        || key_event == BACKSPACE_KEY_EVENT
+                    {
+                        name.handle_event(&key_event);
+                    }
                 }
                 1 => {
-                    description.handle_event(&key_event);
+                    if description.to_string().len() < WINDOWN_WIDTH * BIG_INPUT
+                        || key_event == BACKSPACE_KEY_EVENT
+                    {
+                        description.handle_event(&key_event);
+                    }
                 }
                 _ => {}
             },
@@ -377,10 +477,18 @@ impl InputContent {
                 ref mut password,
             } => match self.selected_input {
                 0 => {
-                    email.handle_event(&key_event);
+                    if email.to_string().len() < WINDOWN_WIDTH * SMALL_INPUT
+                        || key_event == BACKSPACE_KEY_EVENT
+                    {
+                        email.handle_event(&key_event);
+                    }
                 }
                 1 => {
-                    password.handle_event(&key_event);
+                    if password.to_string().len() < WINDOWN_WIDTH * SMALL_INPUT
+                        || key_event == BACKSPACE_KEY_EVENT
+                    {
+                        password.handle_event(&key_event);
+                    }
                 }
                 _ => {}
             },
@@ -390,19 +498,33 @@ impl InputContent {
                 ref mut name,
             } => match self.selected_input {
                 0 => {
-                    email.handle_event(&key_event);
+                    if email.to_string().len() < WINDOWN_WIDTH * SMALL_INPUT
+                        || key_event == BACKSPACE_KEY_EVENT
+                    {
+                        email.handle_event(&key_event);
+                    }
                 }
                 1 => {
-                    password.handle_event(&key_event);
+                    if password.to_string().len() < WINDOWN_WIDTH * SMALL_INPUT
+                        || key_event == BACKSPACE_KEY_EVENT
+                    {
+                        password.handle_event(&key_event);
+                    }
                 }
                 2 => {
-                    name.handle_event(&key_event);
+                    if name.to_string().len() < WINDOWN_WIDTH * SMALL_INPUT {
+                        name.handle_event(&key_event);
+                    }
                 }
                 _ => {}
             },
             InputContentVariants::ChangeUsername { ref mut name } => {
                 if let 0 = self.selected_input {
-                    name.handle_event(&key_event);
+                    if name.to_string().len() < WINDOWN_WIDTH * SMALL_INPUT
+                        || key_event == BACKSPACE_KEY_EVENT
+                    {
+                        name.handle_event(&key_event);
+                    }
                 }
             }
         }
@@ -415,20 +537,20 @@ impl InputContent {
                 ref description,
             } => {
                 if self.selected_input == 0 {
-                    name.to_string().len()
+                    name.to_string().chars().count()
                 } else {
-                    description.to_string().len()
+                    description.to_string().chars().count()
                 }
             }
-            InputContentVariants::CreateBoard { ref name } => name.to_string().len(),
+            InputContentVariants::CreateBoard { ref name } => name.to_string().chars().count(),
             InputContentVariants::UpdateTask {
                 ref name,
                 ref description,
             } => {
                 if self.selected_input == 0 {
-                    name.to_string().len()
+                    name.to_string().chars().count()
                 } else {
-                    description.to_string().len()
+                    description.to_string().chars().count()
                 }
             }
             InputContentVariants::LogIn {
@@ -436,9 +558,9 @@ impl InputContent {
                 ref password,
             } => {
                 if self.selected_input == 0 {
-                    email.to_string().len()
+                    email.to_string().chars().count()
                 } else {
-                    password.to_string().len()
+                    password.to_string().chars().count()
                 }
             }
             InputContentVariants::SignUp {
@@ -447,14 +569,14 @@ impl InputContent {
                 ref name,
             } => {
                 if self.selected_input == 0 {
-                    email.to_string().len()
+                    email.to_string().chars().count()
                 } else if self.selected_input == 1 {
-                    password.to_string().len()
+                    password.to_string().chars().count()
                 } else {
-                    name.to_string().len()
+                    name.to_string().chars().count()
                 }
             }
-            InputContentVariants::ChangeUsername { ref name } => name.to_string().len(),
+            InputContentVariants::ChangeUsername { ref name } => name.to_string().chars().count(),
         }
     }
 }

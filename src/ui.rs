@@ -6,7 +6,7 @@ use tui::{
     Frame,
 };
 
-use crate::app::App;
+use crate::{app::App, helper::input::InputContentVariants};
 
 /// Renders the user interface widgets.
 pub fn render<B: Backend>(app: &mut App, frame: &mut Frame<'_, B>) {
@@ -130,13 +130,9 @@ pub fn render<B: Backend>(app: &mut App, frame: &mut Frame<'_, B>) {
 
     let screen_size = frame.size();
 
-    // place the input in the middle of the screen using layout_input variable name,
-
-    let input_content = app.input_content.clone();
+    let mut input_content = app.input_content.clone();
 
     let input_fields = input_content.ui_to_render();
-
-    // based on input_fields.len() render the input input_fields
 
     let layout_input = Layout::default()
         .direction(Direction::Vertical)
@@ -151,22 +147,15 @@ pub fn render<B: Backend>(app: &mut App, frame: &mut Frame<'_, B>) {
             screen_size.width / 2 - 20,
             screen_size.height / 2 - 5,
             50,
-            match input_fields.len() {
-                0 => 0,
-                1 => 3,
-                2 => 6,
-                _ => 9,
+            match &app.input_content.variant {
+                InputContentVariants::CreateTask { .. } => 9,
+                InputContentVariants::CreateBoard { .. } => 3,
+                InputContentVariants::UpdateTask { .. } => 9,
+                InputContentVariants::LogIn { .. } => 6,
+                InputContentVariants::SignUp { .. } => 9,
+                InputContentVariants::ChangeUsername { .. } => 3,
             },
         ));
-
-    //  let input = Paragraph::new(format!("\n{}", app.input.value))
-    //      .block(
-    //          Block::default()
-    //              .title("New task")
-    //              .borders(Borders::ALL)
-    //              .border_type(BorderType::Rounded),
-    //      )
-    //      .style(Style::default().bg(Color::Indexed(235)).fg(Color::White));
 
     if app.input_content.visible {
         for (index, input) in input_fields.iter().enumerate() {
@@ -177,8 +166,23 @@ pub fn render<B: Backend>(app: &mut App, frame: &mut Frame<'_, B>) {
     match app.input_content.visible {
         true => {
             frame.set_cursor(
-                layout_input[0].x + app.input_content.selected_input_len() as u16 + 1,
-                layout_input[app.input_content.selected_input].y + 1,
+                match (
+                    &app.input_content.variant,
+                    &app.input_content.selected_input,
+                ) {
+                    (InputContentVariants::CreateTask { .. }, 1) => {
+                        layout_input[0].x + (app.input_content.selected_input_len() as u16 + 1) % 48
+                            // for each 48 characters, add 1 
+                            + app.input_content.selected_input_len() as u16 / 48
+                    }
+                    (InputContentVariants::UpdateTask { .. }, 1) => {
+                        layout_input[0].x + (app.input_content.selected_input_len() as u16 + 1) % 48
+                    }
+                    _ => layout_input[0].x + (app.input_content.selected_input_len() as u16 + 1),
+                },
+                // layout_input[0].x + (app.input_content.selected_input_len() as u16 + 1) % 50,
+                layout_input[app.input_content.selected_input].y
+                    + app.input_content.cursor_coordinates().1,
             );
         }
         false => {}

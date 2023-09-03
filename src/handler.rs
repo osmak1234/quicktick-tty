@@ -131,15 +131,17 @@ pub async fn handle_key_events(
                 }
 
                 KeyCode::Char('i') => {
-                    terminal.show_cursor()?;
-                    match app.selected_widget {
-                        true => app.input_content.show(InputContentVariants::CreateBoard {
-                            name: Input::default(),
-                        }),
-                        false => app.input_content.show(InputContentVariants::CreateTask {
-                            name: Input::default(),
-                            description: Input::default(),
-                        }),
+                    if app.user.is_some() {
+                        terminal.show_cursor()?;
+                        match app.selected_widget {
+                            true => app.input_content.show(InputContentVariants::CreateBoard {
+                                name: Input::default(),
+                            }),
+                            false => app.input_content.show(InputContentVariants::CreateTask {
+                                name: Input::default(),
+                                description: Input::default(),
+                            }),
+                        }
                     }
                 }
 
