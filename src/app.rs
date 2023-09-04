@@ -4,6 +4,7 @@ use crate::api::user::{Credentials, User};
 use crate::helper::input::InputContent;
 use crate::helper::stateful_list::StatefulList;
 use std::error;
+use std::fs;
 
 /// Application result type.
 pub type AppResult<T> = std::result::Result<T, Box<dyn error::Error>>;
@@ -20,6 +21,7 @@ pub struct App {
     pub task_data: Vec<Task>,
     pub selected_widget: bool,
     pub input_content: InputContent,
+    pub cookie_uuid: Option<String>,
 }
 
 impl Default for App {
@@ -42,6 +44,18 @@ impl Default for App {
             boards: StatefulList::with_items(Vec::new()),
             selected_widget: false,
             input_content: InputContent::default(),
+            cookie_uuid: {
+                match fs::read_to_string("~/.config/quicktick-tty/cookie.txt")
+                    .ok()
+                    .map(|s| s.trim().to_string())
+                {
+                    Some(uuid) => {
+                        println!("Found cookie: {}", uuid);
+                        None
+                    }
+                    None => None,
+                }
+            },
         }
     }
 }
