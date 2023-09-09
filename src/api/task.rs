@@ -1,3 +1,5 @@
+use core::panic;
+
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -17,42 +19,45 @@ pub struct Task {
 }
 pub async fn get_all_tasks(app: &mut App) -> Option<Vec<Task>> {
     let client = &app.reqwest_client;
-    let url = format!("{}/get/all_user_tasks", API_URL);
+    let url = format!("{}/get/all_user_tasks?device_identifier=tty", API_URL);
     let response = client.get(&url).send().await.unwrap().text().await.unwrap();
     let tasks: Vec<Task> = serde_json::from_str(&response).unwrap();
     Some(tasks)
 }
 
 pub async fn delete_task(app: &mut App) {
-    let selected_task_index = app.tasks.state.selected().unwrap_or(9999);
-    if selected_task_index == 9999 {
-        return;
-    }
-    if app.tasks.items.len() < selected_task_index || app.tasks.items.is_empty() {
-        return;
-    }
-
-    let task_uuid = app.tasks.items[selected_task_index].uuid.clone();
-
+    let task_uuid = app.tasks.selected().unwrap().clone().uuid;
     let board_special = app.boards.selected().unwrap().special;
-    if board_special.is_some_and(|i| i != 2) {
-        let client = app.reqwest_client.clone();
-
-        // Spawn the async task
-        tokio::spawn(async move {
-            todo!("move task to archive board using patch request");
+    if board_special.is_some_and(|special| special == 1) || board_special.is_none() {
+        app.task_data.iter_mut().for_each(|task| {
+            if task.uuid == task_uuid {
+                task.board_uuid = board_special.unwrap().to_string();
+            }
         });
-    } else {
+
+        let special_2_board_uuid = app
+            .boards
+            .items
+            .iter()
+            .find(|board| board.special == Some(2))
+            .unwrap()
+            .uuid
+            .clone();
+        patch_task(app, Action::MoveBoard(special_2_board_uuid)).await;
+    } else if board_special.unwrap() == 2 {
         app.task_data.retain(|task| task.uuid != task_uuid);
 
         let client = app.reqwest_client.clone();
 
         // Spawn the async task
         tokio::spawn(async move {
-            let url = format!("{}/delete/task/{}", API_URL, task_uuid);
+            let url = format!(
+                "{}/delete/task/{}?device_identifier=tty",
+                API_URL, task_uuid
+            );
 
             //TODO: Error handling
-            let _response = client
+            let response = client
                 .delete(&url)
                 .send()
                 .await
@@ -81,7 +86,7 @@ pub async fn create_task(app: &mut App) {
 
     app.task_data.push(new_task.clone());
 
-    let url = format!("{}/post/create_task", API_URL);
+    let url = format!("{}/post/create_task?device_identifier=tty", API_URL);
     let client = app.reqwest_client.clone();
 
     // Spawn the async task
@@ -127,7 +132,7 @@ pub async fn toggle_task(app: &mut App) {
 
     // Spawn the async task
     tokio::spawn(async move {
-        let url = format!("{}/patch/task", API_URL);
+        let url = format!("{}/patch/task?device_identifier=tty", API_URL);
 
         //TODO: Error handling
         let _response = client
@@ -155,15 +160,11 @@ pub enum Action {
 }
 
 pub async fn patch_task(app: &mut App, action: Action) {
-    let selected_task_index = app.tasks.state.selected().unwrap_or(9999);
-    if selected_task_index == 9999 {
-        return;
-    }
-    if app.tasks.items.len() < selected_task_index || app.tasks.items.is_empty() {
+    if app.tasks.selected().is_none() {
         return;
     }
 
-    let task_uuid = app.tasks.items[selected_task_index].uuid.clone();
+    let task_uuid = app.tasks.selected().unwrap().uuid.clone();
 
     let client = app.reqwest_client.clone();
 
@@ -177,11 +178,27 @@ pub async fn patch_task(app: &mut App, action: Action) {
             )
         }
         Action::ChangeOrder(_) => todo!(),
-        Action::MoveBoard(_) => todo!(),
+        Action::MoveBoard(board_uuid) => {
+            format!(
+                "{{\"task_uuid\": \"{}\", \"action\": \"MoveBoard\", \"board_uuid\": \"{}\"}}",
+                task_uuid, board_uuid
+            )
+        }
     };
 
     // Spawn the async task
     tokio::spawn(async move {
-        let url = format!("{}/patch/task", API_URL);
+        let url = format!("{}/patch/task?device_identifier=tty", API_URL);
+
+        let _response = client
+            .patch(&url)
+            .header("Content-Type", "application/json")
+            .body(body)
+            .send()
+            .await
+            .unwrap()
+            .text()
+            .await
+            .unwrap();
     });
 }

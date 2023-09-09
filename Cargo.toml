@@ -26,6 +26,7 @@ tui-logger = { version = "0.9.5", features = [
 tui-input = "0.8.0"
 
 uuid = { version = "1.4.1", features = ["v4"] }
+dirs = "5.0.1"
 
 [dev-dependencies]
 # error handling

@@ -33,9 +33,19 @@ pub fn render<B: Backend>(app: &mut App, frame: &mut Frame<'_, B>) {
         .task_data
         .iter()
         .filter(|task| {
+            let archive_uuid = app
+                .boards
+                .items
+                .iter()
+                .find(|board| board.special == Some(3))
+                .unwrap_or(&app.boards.items[0])
+                .uuid
+                .clone();
+
             app.boards
                 .selected()
                 .is_some_and(|board| board.special.is_some_and(|special| special == 1))
+                && (task.board_uuid == archive_uuid)
                 || app
                     .boards
                     .selected()

@@ -12,7 +12,7 @@ pub struct Board {
 
 pub async fn get_all_user_boards(app: &mut App) -> Option<Vec<Board>> {
     let client = &app.reqwest_client;
-    let url = format!("{}/get/all_user_board", API_URL);
+    let url = format!("{}/get/all_user_board?device_identifier=tty", API_URL);
     //TODO: Error handling
     let response = client.get(&url).send().await.unwrap().text().await.unwrap();
     let boards: Vec<Board> = serde_json::from_str(&response).unwrap();
@@ -20,7 +20,7 @@ pub async fn get_all_user_boards(app: &mut App) -> Option<Vec<Board>> {
 }
 
 pub async fn create_board(app: &mut App) {
-    let url = format!("{}/post/board", API_URL);
+    let url = format!("{}/post/board?device_identifier=tty", API_URL);
     let board: Board = match &app.input_content.variant {
         InputContentVariants::CreateBoard { name } => Board {
             uuid: uuid::Uuid::new_v4().to_string(),
@@ -62,7 +62,10 @@ pub async fn delete_board(app: &mut App) {
 
     // Spawn the async task
     tokio::spawn(async move {
-        let url = format!("{}/delete/board/{}", API_URL, board_uuid);
+        let url = format!(
+            "{}/delete/board/{}?device_identifier=tty",
+            API_URL, board_uuid
+        );
 
         let _response = client
             .delete(&url)

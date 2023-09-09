@@ -39,7 +39,7 @@ pub async fn handle_key_events(
                             email: email.to_string(),
                             password: password.to_string(),
                         };
-                        let user_data = sign_in(app, credentials).await;
+                        let user_data = sign_in(app, credentials, None).await;
                         if let Some(user) = user_data {
                             app.user = Some(user);
                             app.input_content.visible = false;
@@ -117,6 +117,10 @@ pub async fn handle_key_events(
                     } else {
                         app.tasks.next();
                     }
+                }
+
+                KeyCode::Char('o') => {
+                    crate::api::user::log_out(app).await;
                 }
 
                 KeyCode::Char(' ') => {
